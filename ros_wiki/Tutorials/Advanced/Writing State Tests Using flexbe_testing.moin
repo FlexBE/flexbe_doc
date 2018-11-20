@@ -1,0 +1,287 @@
+## For instruction on writing tutorials
+## http://www.ros.org/wiki/WritingTutorials
+####################################
+##FILL ME IN
+####################################
+## for a custom note with links:
+## note =This tutorial assumes you have completed all of the [[flexbe/Tutorials|basic tutorials]] for FlexBE.
+## for the canned note of "This tutorial assumes that you have completed the previous tutorials:" just add the links
+## note.0=
+## descriptive title for the tutorial
+## title =Writing State Tests Using flexbe_testing
+## multi-line description to be displayed in search
+## description =Unit testing of states is very helpful for ensuring that the building blocks for behaviors work as expected. This tutorial explains how to use the framework ''flexbe_testing'' for this purpose.
+## the next tutorial description (optional)
+## next =
+## links to next tutorial (optional)
+## next.0.link=
+## next.1.link=
+## what level user is this tutorial for
+## level= IntermediateCategory
+## keywords =
+####################################
+<<IncludeCSTemplate(TutorialCSHeaderTemplate)>>
+
+<<TableOfContents(4)>>
+
+== Overview ==
+flexbe_testing is a simple and lightweight framework for unit-testing your states. While composing a behavior out of predefined states in the FlexBE UI helps you to avoid errors in composition, flexbe_testing ensures that these predefined states themselves work as expected.
+
+Test cases are created as short [[http://wiki.ros.org/YAML%20Overview|yaml files]] and are passed to a launch file for execution. Per convention, each ROS package defining states in its ''src'' folder is expected to also have a ''tests'' folder containing tests for these states. In order to use ROS messages as input data or for result comparison, you can create bag files and refer them from your test cases.
+
+Most of the time, your test cases will require external nodes to be running as a state primarily interfaces external functionality. But this is no problem, since you can simply launch all the components of your system that you need automatically, also simulation, and then run the tests.
+
+== Defining Tests ==
+This section expects you to have a ROS package defining some states (referred to as ''your_flexbe_states'') to which you want to write some test cases. At the end of this section, you will know everything you need to do so.
+
+=== Preparation ===
+Navigate to your ROS package and create the ''tests'' folder:
+
+{{{
+$ roscd your_flexbe_states
+$ mkdir tests
+$ cd tests
+}}}
+If you need bag files for ROS messages used in the tests, also create a ''bags'' folder inside:
+
+{{{
+$ mkdir bags
+}}}
+Please refer to the [[http://wiki.ros.org/rosbag/Commandline|rosbag documentation]] for help with recording the required bag files.
+
+=== Writing a Test Case ===
+Create a new file in the ''tests'' folder and name it after the state for which you want to write a test, extended by an identifier of what aspect is tested.
+
+Assume we want to create a test case for the ''ExampleState'' presented in one of the basic tutorials. The state waits for a certain time, so we will test it with a short waiting time of 1 second. Thus, we create our test file with the following name:
+
+{{{
+$ touch example_state_short.test
+}}}
+The content of this test case will look like this:
+
+{{{
+path: flexbe_states.example_state
+class: ExampleState
+
+params:
+    target_time: 1
+
+outcome: continue
+}}}
+In the first two lines, we declare the target state of our test. Typically, only states of the package which contains the respective test file should be tested. However, when you create more complex projects, you might want to also test common states with specific data.
+
+The ''params'' section sets all parameters defined by this state. In this case, there is only one parameter called ''target_time'' which expects a float value, set to 1.
+
+At the end, ''outcome'' defines that we expect the outcome ''continue'' to be returned.
+
+=== Test Case Options ===
+The following provides a complete example of all available options when writing test cases:
+
+{{{
+path: flexbe_states.calculation_state
+class: CalculationState
+
+import_only: false
+
+launch: '<launch>...</launch>'
+
+data: flexbe_testing/test_calc.bag
+
+params:
+    calculation: "lambda x: x.position.x + 1"
+
+input:
+    input_value: /calc_input
+
+output:
+    output_value: 7.4
+
+outcome: done
+}}}
+Details:
+||'''path''' ||(required) ||Python import path of the state to be tested. Should only point to states of the same package when placed inside a state package. ||
+||'''class''' ||(required) ||Python class name of the state to be tested. ||
+||'''import_only''' ||''(optional)'' ||Is ''false'' per default and only need to be declared when set to true. Will just import the declared state and not execute it. Only importing a state can already find a lot of possible errors without running the whole system. ||
+||'''launch''' ||''(optional)'' ||Launchfile which should be executed in parallel to running the tests. Can either reference an existing launchfile or define one in-place.||
+||'''data''' ||''(optional)'' ||Bag file used as data source for message-based data. Can be used for params, input, and output values as explained in the next section. ||
+||'''params''' || ||Parameters given as key value pairs for all parameters defined by the state. ||
+||'''input''' || ||Input userdata given as key value pairs for all input keys defined by the state. ||
+||'''output''' || ||Output userdata given as key value pairs for all output keys defined by the state. The values of this data will be compared to the values returned by the state after execution. A test can only succeed if all values match. ||
+||'''outcome''' ||(required) ||One of the outcomes as defined by the state. This outcome is expected to be returned in the end and the test can only succeed if this outcome matches. ||
+
+
+
+
+=== Using Bag Files ===
+In order to use a bag file, declare it as data source of your test case:
+
+{{{
+data: flexbe_states/tests/bags/pose3d.bag
+}}}
+Note that the path can either be absolute (starts with / or ~/) or package-relative. Test cases for common state packages should always use a package-relative path and bag files should be placed under /tests/bags/.
+
+Message-based data can be used as values for ''params'', ''input'', and ''output'' data. In order to refer to it, use the respective topic name as input value, for example:
+
+{{{
+params:
+    text: /calc_input
+}}}
+This will load a message from the topic ''/calc_input'' and pass it as value to the ''text'' parameter.
+
+Bag files referred as data source are solely used for retrieving ROS messages from it. They are not played additionally. If you want to play a bag file in parallel, do so [[http://wiki.ros.org/rosbag/Commandline|as usual]]. If you think a feature to also specify a bag file that should be executed in parallel would be helpful, [[https://github.com/team-vigir/flexbe_behavior_engine/issues|open an issue]] and I will put it on my todo list (please provide a convincing use-case).
+
+
+=== Running Launchfiles ===
+In order to execute a launchfile in parallel to running your test case, you can refer to any existing launchfile:
+
+{{{
+launch: gazebo_ros/launch/empty_world.launch
+}}}
+
+Again, you can either provide an absolute (starts with / or ~/) or package-relative path. In addition to referencing external launch files, you can also define a custom one directly in the test case definition by using the standard [[http://wiki.ros.org/roslaunch/XML|xml syntax]]:
+
+{{{
+launch: '<launch>
+        <node name="test_move_base" pkg="move_base" type="move_base" launch-prefix="xterm -e" />
+    </launch>'
+}}}
+
+Note the above usage of the launch-prefix argument. This is recommended and will execute the node in a different terminal window, thus separating terminal outputs of the state from ones of move_base. The xterm window closes automatically after the test finished. But if required, you can still access the output at ''~/.ros/log/[run_id]/rosout.log''.
+
+Anyways, it is recommended to rather use existing launch files, preferably a well-defined testing setup for your system.
+
+
+=== Value Data Types ===
+In general, a test case simply is a [[http://wiki.ros.org/YAML%20Overview|yaml file]]. This means all you provide as value of ''params'', ''input'', and ''output'' fields is interpreted as usual for yaml files. In addition, there are some useful special cases:
+||'''/topic''' ||If a string starts with / and there is a data source bag file containing a matching topic, this string is considered a topic name and the value will be set to the first message on this topic. ||
+||'''lambda''' ||You can use anonymous functions in test cases. If a string matches a Python lambda definition, it will be passed as a function with the given implementation. ||
+||'''None''' ||Will be set to the Python value ''None''. ||
+||'''//''' ||If a string is not meant to be a topic, you can escape a leading / as //. ||
+
+
+
+
+== Running Tests ==
+Tests are executed using a launch file. flexbe_testing already provides a launch file which can either directly be executed, or included by custom launch files for sets of tests.
+
+In order to use the provided launch file directly, run for example:
+
+{{{
+$ roslaunch flexbe_testing flexbe_testing.launch testcases:='$(find flexbe_states)/tests/log_state_string.test $(find flexbe_states)/tests/log_state_int.test'
+}}}
+This will run two of test cases of flexbe_states.
+
+=== Define Custom Launchfile ===
+Navigate to the tests folder of your ROS package and create a new launch file:
+
+{{{
+$ roscd your_flexbe_states/tests
+$ touch run_tests.launch
+}}}
+In order to separate a launch file for tests from other launch files, it is not created in a ''launch'' folder, but instead next to the test cases. Per convention, there is always one file name ''run_tests.launch'' for executing the standard set of tests. If required, you can create additional launch files for other test configurations.
+
+The content of a test launch file will look like this:
+
+{{{
+<launch>
+        <arg name="path" value="$(find flexbe_states)/tests" />
+
+        <include file="$(find flexbe_testing)/launch/flexbe_testing.launch">
+                <arg name="compact_format" value="true" />
+                <arg name="testcases" value="
+
+                        $(arg path)/calculation_state_simple.test
+                        $(arg path)/calculation_state_none.test
+                        [...]
+                        $(arg path)/wait_state_short.test
+
+                " />
+        </include>
+</launch>
+}}}
+The important part of this launch file is that all test cases you want to be executed need to be passed to the ''testcases'' argument, white-space separated. Furthermore, there is a set of execution options for running the tests.
+
+Note that, due to the characteristics of a launch file, all nodes are started in parallel. This means if you need to have a simulation or other ROS nodes running in order to execute the tests, you cannot include their launch file here. Instead, run the external setup first and when everything is ready, run the test launch file.
+
+=== Output Format Configuration ===
+The following options can be used to configure the output format when running the tests:
+||'''print_debug_positive''' ||''True'' ||Print information about successful testing steps. ||
+||'''print_debug_negative''' ||''True'' ||Print information about failed testing steps. ||
+||'''mute_info''' ||''False'' ||Redirects ''rospy.loginfo'' calls to ''rospy.logdebug''. ||
+||'''mute_warn''' ||''False'' ||Redirects ''rospy.logwarn'' calls to ''rospy.logdebug''. ||
+||'''mute_error''' ||''False'' ||Redirects ''rospy.logerror'' calls to ''rospy.logdebug''. ||
+||'''compact_format''' ||''False'' ||Uses an alternative, compact format. This overwrites all of the above values. Recommended for regression testing. ||
+
+=== Run Custom Launchfile ===
+Finally, run your newly created testing launch file:
+
+{{{
+$ roslaunch your_flexbe_states run_tests.launch
+}}}
+
+== Rostest Integration ==
+As ROS provides its own testing framework, [[http://wiki.ros.org/rostest|rostest]], flexbe_testing provides a compatible interface. In order to make use of this interface, create a new file inside your tests folder and call it for example ''run_rostest.test''. The content will look like this compared to the launch file example above:
+
+{{{
+<launch>
+        <arg name="pkg" value="flexbe_states" />
+        <arg name="path" value="$(find flexbe_states)/tests" />
+
+        <include file="$(find flexbe_testing)/test/flexbe_rostest.test">
+                <arg name="package" value="$(arg pkg)" />
+                <arg name="testcases" value="
+
+                        $(arg path)/calculation_state_simple.test
+                        $(arg path)/calculation_state_none.test
+                        [...]
+                        $(arg path)/wait_state_short.test
+
+                " />
+        </include>
+</launch>
+}}}
+
+As you might notice, this looks very similar to the standard launch file. There are only two differences: First, we now need to pass the name of the package to which rostest should associate the performed tests. And second, we now include the respective rostest file provided by flexbe_testing, which will take care of the rest.
+
+Now you can execute the state tests by running
+{{{
+$ rostest your_flexbe_states run_rostest.test
+}}}
+
+
+=== Automated Testing ===
+
+rostest enables to run tests everytime you perform a ''catkin_make'' of your workspace. In order to use this feature for state tests, make sure you set up the CMakeLists.txt and package.xml of your states package as required by rostest.
+
+To CMakeLists.txt, add:
+{{{
+# run tests
+if(CATKIN_ENABLE_TESTING)
+        find_package(rostest REQUIRED)
+        add_rostest(tests/run_rostest.test)
+endif()
+}}}
+
+To package.xml, add:
+{{{
+<build_depend>rostest</build_depend>
+}}}
+
+You can now tell catkin to perform tests for all of the packages in your workspace which define rostests in this way by running:
+{{{
+$ catkin_make run_tests
+}}}
+
+Note that, due to some interference between rostest and roslaunch, the launch attribute of test cases does not work properly when executed along with a catkin_make (nodes started by roslaunch immediately die if a rostest has been executed before in the same run). Thus, unfortunately, you need to remove all test cases relying on a launch file execution for test runs executed this way.
+
+== Test Case Guidelines ==
+As always, the extent to which you write test cases depends on the target use case. However, there are a few guidelines when developing states which are made publicly available. Also for your own project, it might be advantageous to stick to these, especially when you intend to release them eventually.
+
+ * '''Import Only''': Every state should at least have an import-only test. There is absolutely no reason why not. Such a test definition consists of three lines and does not require any test data or runtime setup. On the other hand, it already helps to detect a lot of errors, such as missing imports, inconsistent indentation, or syntax typos. Practically speaking, this is similar to check for compile errors in C++ code. ''You only need the import-only test if there is no other test for this state (since import is part of all tests).''
+ * '''Simple Examples''': In most of the cases, a test case with simple and intended values out of the defined/documented input space should be feasible with reasonable effort and is beneficial in order to make sure that at least happens what is intended when provided with what is expected. Optimally, there is one example for each [[https://en.wikipedia.org/wiki/Equivalence_partitioning|equivalence class]] of the input space.
+ * '''Negative Examples''': Similar to test cases based on data of the defined input space, this class of tests is intended to make sure that the state can also handle erroneous input data without crashing or unexpected behavior. This prevents runtime errors from spreading across multiple states by passing unexpected data. However, negative examples are primarily required for rather critical systems.
+ * '''Advanced Scenarios''': If reasonable for certain states, well-defined scenarios help to run more realistic test cases. These tests typically require a bunch of recorded messages and external ROS nodes and are mostly project-specific.
+
+## AUTOGENERATED DO NOT DELETE
+## TutorialCategory
+## FILL IN THE STACK TUTORIAL CATEGORY HERE

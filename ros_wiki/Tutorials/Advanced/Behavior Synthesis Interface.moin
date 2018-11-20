@@ -1,0 +1,190 @@
+## For instruction on writing tutorials
+## http://www.ros.org/wiki/WritingTutorials
+####################################
+##FILL ME IN
+####################################
+## for a custom note with links:
+## note =This tutorial assumes you have completed all of the [[flexbe/Tutorials|basic tutorials]] for FlexBE.
+## for the canned note of "This tutorial assumes that you have completed the previous tutorials:" just add the links
+## note.0=
+## descriptive title for the tutorial
+## title =Behavior Synthesis Interface
+## multi-line description to be displayed in search
+## description =Behavior synthesis enables to automatically draft entire state machines from abstract specifications. This tutorial outlines the interface provided by FlexBE and shows how to embed existing synthesis solutions.
+## the next tutorial description (optional)
+## next =
+## links to next tutorial (optional)
+## next.0.link=
+## next.1.link=
+## what level user is this tutorial for
+## level= IntermediateCategory
+## keywords =
+####################################
+<<IncludeCSTemplate(TutorialCSHeaderTemplate)>>
+
+<<TableOfContents(4)>>
+
+== Overview ==
+
+In addition to the support FlexBE provides for developers when defining behaviors manually, it also provides the option to automatically synthesize the content of contained state machines or whole behaviors. In combination, a developer could create a rough structure manually, then synthesize the content of several parts, and finally complete details again manually.
+
+Integrating FlexBE with your synthesis algorithm enables you to concentrate on the synthesis because FlexBE on the one hand offers defined abstract robot capabilities to be used by the algorithm and on the other hand handles execution of synthesized behaviors so you don't need to care about runtime monitoring, state transitions, or anything else in this domain.
+
+Furthermore, the FlexBE behavior synthesis interface does not require you to synthesize complete state machines. It rather can provide a draft in any level of detail since the synthesis result is accessible in the editor and not different from anything which had been created manually. As such, a developer can fill in and complete missing parts manually. For example, an algorithm could just throw in a set of states and let the developer define transitions. Or it could provide a complete hierarchical state machine, but leave the parametrization of states open to the developer. Basically, any single component such as a transition, an autonomy level, userdata remapping, a parameter value, and so on can be defined independently.
+
+== Using Synthesis ==
+
+Using a synthesis server which implements the synthesis interface described below is very simple. In order to set up the interface, go to the ''Configuration'' view in the FlexBE App where you will find a specific panel for synthesis:
+
+{{http://philserver.bplaced.net/fbe/img/tutorials/fbetut03.png}}
+
+Obviously, check the checkbox in order to enable the synthesis option in the editor. This requires ROS connection because the synthesis server needs to be contacted. You can create a launch file for this purpose which includes both the launch file of the synthesis server and the {{{flexbe_widget/launch/behavior_ocs.launch}}} launch file.
+
+Furthermore, set the action topic and type to match the one provided by the synthesis server. ''System'' is an optional configuration field where you can provide an identifier for the used robot system to the synthesis server, given this is required or supported by the specific server.
+
+After configuration is done, you can go to the ''Statemachine Editor'' view and add a new container. You will recognize a new checkbox in the properties of this container which enables you to use the synthesis interface.
+
+{{http://philserver.bplaced.net/fbe/img/tutorials/fbetut04.png}}
+
+The concrete semantics as well as the syntax of the two input fields depends on the specific synthesis server, but in general, ''Initial Conditions'' expects a statement describing the state which is present when entering the container and ''Goal'' specifies what should be achieved by the content. Please refer to the documentation of the used synthesis tool for further details on the expected input.
+
+As soon as you click synthesize, an action goal containing the specifications will be sent to the synthesis server and eventually, a result comes back. This result will replace the current content inside the container for which you request synthesis, but does not touch any part outside. Thus, you can synthesizes several parts of a behavior independently. After synthesis, you can open the container, check the result, and potentially make any adjustments or additions manually. Again, please refer to the documentation of the synthesis server in order to check if it expects you to perform any manual additions.
+
+== Implementing a Synthesis Server ==
+
+In FlexBE, synthesis is integrated as an [[actionlib]] action server implementation. Thus, in order to integrate FlexBE with your synthesis algorithm, you need to implement a simple ROS node providing an action server and internally calling the algorithm in order to generate the result.
+
+=== Synthesis Interface ===
+
+The following code example gives you an overview of what you need to implement at least.
+
+{{{
+#!python block=server
+import rospy
+import actionlib
+
+from flexbe_msgs.msg import BehaviorSynthesisAction, BehaviorSynthesisResult, StateInstantiation, OutcomeCondition
+
+class SynthesisNode(object):
+
+	def __init__(self):
+		self._as = actionlib.SimpleActionServer('/flexbe/behavior_synthesis', BehaviorSynthesisAction, self._execute_cb, False)
+		self._as.start()
+
+	def _execute_cb(self, msg):
+		# contains initial conditions input string
+		initial_condition = msg.request.initial_condition
+		# contains goal input string
+		goal = msg.request.goal
+
+		# synthesize some states
+		states = your_synthesis_algorithm(initial_conditions, goal)
+
+		result = BehaviorSynthesisResult()
+		# 1 means success, rest is considered as failure
+		result.error_code.value = 1
+		result.states = states
+		self._as.set_succeeded(result)
+
+if __name__ == '__main__':
+	rospy.init_node('synthesis_node')
+	node = SynthesisNode()
+	rospy.spin()
+}}}
+
+Lets break down this example and discuss it step by step. First, you need to import some modules.
+
+<<CodeRef(server,1,4)>>
+
+The behavior synthesis action is just the default message. In principle, you can use any custom message for your synthesis as long as you provide at least what is contained in the default message. However, it is recommended to stick with the default message type in case the interface gets extended. The message {{{StateInstantiation}}} is required to define the synthesized states as demonstrated in the next section. {{{OutcomeCondition}}} is only required if you synthesize concurrency containers.
+
+<<CodeRef(server,9,10)>>
+
+When creating the action server, you can pick any topic. This is the topic users will have to enter in their ''Configuration'' view as described in the previous section.
+
+<<CodeRef(server,13,16)>>
+
+The [[https://github.com/team-vigir/flexbe_behavior_engine/blob/master/flexbe_msgs/msg/SynthesisRequest.msg|synthesis request]] of the action goal primarily contains the initial condition and goal input strings provided via the user interface when making the request. In addition, name and outcomes of the container are provided and can be used by synthesis, as well as the configured system identifier.
+
+<<CodeRef(server,18,19)>>
+
+This is where all the magic happens. Your synthesis algorithm are expected to return a list of state instantiations (see next section) or at least you need to translate its output to such a list.
+
+<<CodeRef(server,21,25)>>
+
+If everything went well, you can send back your result and pick one of the [[https://github.com/team-vigir/flexbe_behavior_engine/blob/master/flexbe_msgs/msg/SynthesisErrorCodes.msg|SynthesisErrorCodes]]. In addition, feel free to send any feedback during the synthesis process as defined in the [[https://github.com/team-vigir/flexbe_behavior_engine/blob/master/flexbe_msgs/action/BehaviorSynthesis.action|action]].
+
+=== State Instantiation ===
+
+Main content of a synthesis result is a list of [[https://github.com/team-vigir/flexbe_behavior_engine/blob/master/flexbe_msgs/msg/StateInstantiation.msg|StateInstantiation]] messages. Although this message definition contains a lot of fields, only a few are required. In general, any field you skip will keep its default value. For example, the {{{LogState}}} defines two parameters: {{{text}}} expects a string to be logged and {{{severity}}} expects an int or class constant reference to set the severity level, but also defines a default level. If you now only set the parameter {{{text}}} to any value, but skip {{{severity}}}, the state instantiation will simply keep its default value.
+
+Note that the provided values are interpreted just as user input would be interpreted. This is especially important for providing string values. Consider the following example:
+
+{{{
+state.parameter_names = ['text']
+state.parameter_values = ['my_message']
+}}}
+This notation sets the value of the parameter {{{text}}} to a variable called {{{my_message}}}, which needs to be defined by the behavior.
+
+{{{
+state.parameter_names = ['text']
+state.parameter_values = ['"My message"']
+}}}
+In contrast, the second notation sets the value to the constant string {{{"My message"}}}.
+
+'''Required Fields'''
+
+For each state instantiation, you need to define:
+
+ * {{{state_path}}}: This is the the relative path of the state inside the synthesized state machine. For example, a simple {{{/}}} defines the root container. {{{/My_State}}} defines a state named ''My_State'' directly inside the synthesized container and {{{/Inner_Container/My_State}}} defines a state inside an inner container. Do not forget to define this inner container as well.
+ * {{{state_class}}}: Specifies the class of which this state is an instantiation. Either pick one of the FlexBE states or set it to one of the defined constants for a specific container.
+ * {{{behavior_class}}} (only behaviors): If {{{state_class}}} is set to {{{CLASS_BEHAVIOR}}}, you need to pass the behavior name in this field.
+
+The rest of the fields is optional. However, the synthesized behavior will need some additional manual adjustments depending on which of the optional fields you skip.
+
+'''Additional Container Fields'''
+
+Only relevant for state machines and concurrency containers. You can and should set {{{initial_state_name}}} to the name (last segment of the state path) to the desired initial state of the container. If this is skipped, it has to be done manually.
+
+Furthermore, you can set input and output keys of the container in order to pass userdata to or from the inside. Keys given here are the keys as visible to internal states of the container and can be remapped if desired. If remapping is skipped, they will be remapped to themselves.
+
+'''Additional Concurrency Container Fields'''
+
+Only relevant for concurrency containers. You can define under which conditions outcomes of this container should be returned. Each entry in {{{cond_outcome}}} should refer to one of the available container outcomes, but outcomes can be present multiple times (boolean disjunction). Accordingly, each entry in {{{cond_transition}}} defines a list of states and one of their outcomes (boolean conjunction) to be returned in order to trigger this container outcome.
+
+'''Additional Primitive State Fields'''
+
+Only relevant for FlexBE states, not for any container. You can specify parameters to be set to given values. If a parameter does not specify a default value and is skipped here, it has to be filled in manually.
+
+'''Additional Optional Fields'''
+
+Relevant for all types of instantiation. You can set the position where this state should be drawn in the editor. States cannot overlap each other and will be placed next to each other if no value is specified or as close to their desired position as possible. However, if it is intended that a developer can get an overview of the synthesized result, it is recommended to provide a reasonable arrangement with respect to the semantics of the states.
+
+Transitions and their required level of autonomy can be specified as well as optional remapping of userdata keys. Since all outcomes of a state need to be connected, skipped outcomes need to be completed manually.
+
+'''Example State Instantiation List'''
+
+The following code example provides a simple synthesis result where the container only contains a single state which logs a message. Note that the root container always needs to be specified as done here (although it can be any type of container and, e.g., the input and output keys can be set as required).
+
+{{{
+#!python
+states = []
+
+sm = StateInstantiation(state_path="/")
+sm.state_class = ":STATEMACHINE"
+sm.initial_state_name = "Log_Message"
+sm.outcomes = ['finished', 'failed']
+states.append(sm)
+
+s = StateInstantiation(state_path="/Log_Message")
+s.state_class = "LogState"
+s.parameter_names = ['text']
+s.parameter_values = ['"My message"']
+s.outcomes = ['done']
+s.transitions = ['finished']
+states.append(s)
+}}}
+
+## AUTOGENERATED DO NOT DELETE
+## TutorialCategory
+## FILL IN THE STACK TUTORIAL CATEGORY HERE

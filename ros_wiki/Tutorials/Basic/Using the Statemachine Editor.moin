@@ -1,0 +1,77 @@
+## For instruction on writing tutorials
+## http://www.ros.org/wiki/WritingTutorials
+####################################
+##FILL ME IN
+####################################
+## for a custom note with links:
+## note =
+## for the canned note of "This tutorial assumes that you have completed the previous tutorials:" just add the links
+## note.0=[[flexbe/Tutorials/Creating a New Behavior|Creating a New Behavior]]
+## descriptive title for the tutorial
+## title =Using the Statemachine Editor
+## multi-line description to be displayed in search
+## description =Teaches the most important basic steps to define the control flow implementation of a behavior based on the graphical editor.
+## the next tutorial description (optional)
+## next =
+## links to next tutorial (optional)
+## next.0.link=[[flexbe/Tutorials/Execution of a Behavior|Execution of a Behavior]]
+## next.1.link=
+## what level user is this tutorial for
+## level= BeginnerCategory
+## keywords =
+####################################
+<<IncludeCSTemplate(TutorialCSHeaderTemplate)>>
+
+Start implementing the behavior by adding FlexBe built-in state library to your FlexBe App. This state library is included in ''flexbe_behavior_engine/flexbe_states/src/flexbe_states. ''Go to '''configuration''' tab, in '''State Library '''window click '''Add Folder '''and select your  ''flexbe_states'' folder. This procedure is also performed to add another state library that other people made.
+
+Now adding its first state. As written in the first tutorial, we want our behavior to wait for some time and then print a message. So our first state will be a state which waits a given amount of seconds.
+
+Click ''Add State'' at the top, enter a name for the new state and select '''WaitState''' from the list below. Entering something like "wait" in the class filter will help to quickly find the state and would also help if we didn't know the exact name and just need any state for waiting.
+
+{{http://philserver.bplaced.net/fbe/img/tutorials/fbetut21.png}}
+
+Now click ''Add'' to add the new state to the behavior state machine.
+
+The properties of the newly added state will pop up. This panel can also be displayed by clicking on the state. Since we already defined a parameter for the waiting time, we can use it now. References to parameters always start with a '''self.''' in front of the parameter name. This helps to distinguish between parameters and constants. However, you can just start typing '''waiting_time''' and let autocompletion do the rest.
+
+{{http://philserver.bplaced.net/fbe/img/tutorials/fbetut22.png}}
+
+Click ''Apply'' to make this change permanent.
+
+Next, we add our second state the same way. This time, it's a '''LogState''' as shown below because now we want to print our message.
+
+{{http://philserver.bplaced.net/fbe/img/tutorials/fbetut23.png}}
+
+This state has two parameters which we can now edit in the properties panel.
+
+The first one is the text to be printed. As we did for the waiting state, we won't enter an explicit value, but instead refer to one of our already defined values. So, just enter the name of our message string, '''hello''', as value of the text parameter. As soon as you click ''Apply'', you will also see its value as tooltip when hovering over the text field. Note that entering an explicit value (string in this case) would require quotes in contrast to referencing a variable, just like you entered in the value field of the '''hello''' variable.
+
+The second parameter defines the type of the message such as error or warning. The default value should be fine this time. Normally, behavior hints are used to give explicit instructions or reminders to the operator when he is expected to do something.
+
+{{http://philserver.bplaced.net/fbe/img/tutorials/fbetut24.png}}
+
+This time, we will also change the required level of autonomy of this state's outcome. Select '''High''' and apply the change. The meaning of this ''Autonomy Level'' is explained in the next tutorial.
+
+{{http://philserver.bplaced.net/fbe/img/tutorials/fbetut25.png}}
+
+Now connect the added states.
+
+Start with setting the initial state by clicking on the black bullet next to the waiting state first, and then clicking on the waiting state to connect it to the bullet. You may also change the position of the states by dragging them at their top right corner (indicated by a move icon).
+
+The unconnected outcomes of each state are listed at the bottom of each state's visualization. First, click on the outcome you want to connect and then click on the target. The two bullets at the bottom of the state machine are the outcomes of the state machine itself. You can ignore the outcome '''failed''' for now.
+
+Your state machine should now look similar to the one shown below.
+
+{{http://philserver.bplaced.net/fbe/img/tutorials/fbetut26.png}}
+
+The green color of the second transition refers to its required autonomy level.
+
+Now save the behavior. This will generate all files required for executing the new behavior.
+
+Since you added a new ROS package by creating a new behavior, ''catkin'' needs to configure this new package. In order to do so, close the ''Chrome App'' after saving and run '''catkin_make'''. This step is only required when adding a new behavior. Changes to a behavior do not require this process.
+
+That's it! You are ready for your first [[http://wiki.ros.org/flexbe/Tutorials/Execution%20of%20a%20Behavior|execution of a behavior]].
+
+## AUTOGENERATED DO NOT DELETE
+## TutorialCategory
+## FILL IN THE STACK TUTORIAL CATEGORY HERE

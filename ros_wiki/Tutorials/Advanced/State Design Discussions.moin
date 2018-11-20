@@ -1,0 +1,67 @@
+## For instruction on writing tutorials
+## http://www.ros.org/wiki/WritingTutorials
+####################################
+##FILL ME IN
+####################################
+## for a custom note with links:
+## note =This tutorial assumes you have completed all of the [[flexbe/Tutorials|basic tutorials]] for FlexBE.
+## for the canned note of "This tutorial assumes that you have completed the previous tutorials:" just add the links
+## note.0=
+## descriptive title for the tutorial
+## title =State Design Discussions
+## multi-line description to be displayed in search
+## description =Proper state design can reduce complexity of behaviors significantly. Some best practices are given for reference.
+## the next tutorial description (optional)
+## next =
+## links to next tutorial (optional)
+## next.0.link=
+## next.1.link=
+## what level user is this tutorial for
+## level= IntermediateCategory
+## keywords =
+####################################
+<<IncludeCSTemplate(TutorialCSHeaderTemplate)>>
+
+<<TableOfContents(4)>>
+
+== What is a state? ==
+
+Although this question looks very simple, it probably is the most complex thing you could ask and argue about regarding states. In general, a state describes a time period in which a certain part of the system is invariant and, depending on the current state, reactions on events breaking this invariance are selected. Often, such a part of interest is split into several dimensions considering the environment as well as the system itself.
+
+'''Modelling point-of-view'''
+
+Since FlexBE has originally been developed for use in complex and unknown environments as faced by rescue robots or similar remote agents, it primarily focuses its state space on system actions rather than assumptions regarding the environment. A state is active while an action is performed and given its outcome, an appropriate reaction is chosen given the state machine definition. External events are typically captured by monitoring actions which return certain results if such events occur. This explicitly models the fact that a robot can only observe, but not really know, the state of its environment.
+
+'''Software engineering point-of-view'''
+
+A FlexBE state is one encapsulated and well-defined capability of a robot system. A state can be parametrized and provided with data determined during runtime and return one out of a set of defined outcomes in order to react to occurred events. The answer to the question of what to combine to a single state and when to split a single state into multiple ones really depends on the specific system. For example, if you have a navigation capability such as provided by [[move_base]], which lets to set a goal and then internally handles planning and execution, this will most likely correspond to a single state. On the other hand, if you have an interface as for example provided by [[moveit]] which lets you separate planning from execution, you might consider such a separation on a state level as well, for example in order to also execute pre-planned motions.
+
+== Where to do what? ==
+
+As described in the tutorial [[http://wiki.ros.org/flexbe/Tutorials/The%20State%20Lifecycle|The State Lifecycle]], a state can implement several events. In general, it is recommended to do as much as possible in the constructor (especially registering subscribers and action clients), as this will identify potential issues even before starting behavior execution.
+
+Although the onboard behavior engine will catch any runtime exceptions during behavior execution, it is recommended to always embed parts which depend on assumptions made about external components or refer to userdata in try/catch-blocks and return an appropriate state outcome. This enables a behavior developer to define desired reactions to such failure events instead of just letting the behavior crash. Only exception from this is the constructor of a state. Here you can feel encouraged to actively throw errors whenever any condition required for valid state execution is not met, for example sanity-check parameter values.
+
+In general, state execution is assumed to be non-blocking. Main reason for this is the ability to let a remote operator interact with the behavior and intercept at any point during runtime. Thus, make sure to not block execution with any computationally intensive calculations. Blocking service calls should be used with caution, but speaking from experience, simple look-up or triggering service calls are fine most of the time as long as there is no significant latency involved. Anything more complex is recommended to be implemented using a non-blocking action interface (see tutorial [[http://wiki.ros.org/flexbe/Tutorials/Developing%20Actionlib%20States|Developing Actionlib States]]).
+
+== Types of Data ==
+
+A state has access to two different types of data: parameters and userdata. The following gives you an overview when which type is more appropriate and what you need to consider when choosing one.
+
+=== State Parameter ===
+
+A parameter is data which is constant during behavior execution. It is passed to the constructor of a state and can be set in the state properties panel of the editor. Although it can contain any type of data or complex structure, it is recommended to prefer primitive data types or lists of them. This makes it easier for a developer to pass the desired values. Also, whenever possible, parameters should define default values.
+
+If a parameter provides a selection from multiple options, you can use class constants to define these (see [[https://github.com/team-vigir/vigir_behaviors/blob/master/vigir_flexbe_states/src/vigir_flexbe_states/change_control_mode_action_state.py|example]]). Such class constants are included in the autocompletion suggestions of the editor.
+
+=== Userdata ===
+
+Userdata is data variable during runtime and typically determined by previous states. However, a behavior can also specify initial values for userdata. Userdata is not available when a state is constructed, only when it becomes active during execution.
+
+Any format of data can be used as userdata, although it is recommended to prefer standard interfaces, especially common ROS messages for data more complex than primitive data types. For example {{{geometry_msgs/PoseStamped}}} for poses or {{{trajectory_msgs/JointTrajectory}}} for trajectories. One thing you should be especially careful with are custom data structures using python dictionaries. This quickly gets out of control regarding modularity and makes a state interface less useful.
+
+One thing you should always keep in mind when defining input keys of a state is that this requires the data key to be present in the container of the instantiated state. This means that a developer potentially needs to add the key to its container as well if no state of the same container is guaranteed to set it previously. While this feels natural for reasonable input keys, it can quickly get annoying for behavior developers if a state defines more input keys than really required.
+
+## AUTOGENERATED DO NOT DELETE
+## TutorialCategory
+## FILL IN THE STACK TUTORIAL CATEGORY HERE

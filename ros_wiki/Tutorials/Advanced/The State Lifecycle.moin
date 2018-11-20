@@ -1,0 +1,115 @@
+## For instruction on writing tutorials
+## http://www.ros.org/wiki/WritingTutorials
+####################################
+##FILL ME IN
+####################################
+## for a custom note with links:
+## note =This tutorial assumes you have completed all of the [[flexbe/Tutorials|basic tutorials]] for FlexBE.
+## for the canned note of "This tutorial assumes that you have completed the previous tutorials:" just add the links
+## note.0=
+## descriptive title for the tutorial
+## title =The State Lifecycle
+## multi-line description to be displayed in search
+## description =Presents a complete overview of the lifecycle of a state and the related event callbacks.
+## the next tutorial description (optional)
+## next =
+## links to next tutorial (optional)
+## next.0.link=
+## next.1.link=
+## what level user is this tutorial for
+## level= IntermediateCategory
+## keywords =
+####################################
+<<IncludeCSTemplate(TutorialCSHeaderTemplate)>>
+
+<<TableOfContents(4)>>
+
+== Overview ==
+
+The following illustration shows the lifecycle of a state along with associated events. When a new behavior is executed, this lifecycle is started for all states contained anywhere in the hierarchy of the behavior (including states of contained behaviors).
+
+{{http://philserver.bplaced.net/fbe/img/state_lifecycle.png}}
+
+First, all states are instantiated and thus, their constructor is called. Afterwards, i.e., when execution of the constructor of all states has finished, the ''on_start'' event is triggered for all states. Then, the initial state becomes active. Whenever a state becomes active, its ''on_enter'' event is triggered once. Then, it periodically (default: 10 hz) calls its ''execute'' function to check for exit conditions and if an outcome is returned, the ''on_exit'' event is triggered once before the next state becomes active. Finally, if an outcome of the root-level state machine is returned or execution of the behavior is stopped manually, the ''on_stop'' event of all states is triggered in order to clean up.
+
+Note that ''on_start'' and ''on_stop'' are triggered exactly once for each state (concurrently) per behavior execution.
+Although ''on_enter'' and ''on_exit'' are also only triggered once when the associated state becomes active or inactive, a state can become active multiple times and thus, these events can be triggered multiple times during a behavior execution.
+
+== Main Functions ==
+
+=== Constructor ===
+{{{
+def __init__(self, target_time):
+	super(ExampleState, self).__init__(outcomes = ['continue', 'failed'])
+}}}
+
+Typically used to declare variables and configure proxies. The state interface is defined by calling the constructor of the superclass.
+
+=== Execution Loop ===
+{{{
+def execute(self, userdata):
+}}}
+
+This function is called periodically while the state is active.
+Main purpose is to check state conditions and trigger a corresponding outcome.
+If no outcome is returned, the state will stay active.
+
+== Event Callbacks ==
+
+=== on_start ===
+{{{
+def on_start(self):
+}}}
+
+This event is triggered when the behavior is started.
+If possible, it is generally better to initialize used resources in the constructor because if anything failed, the behavior would not even be started.
+
+=== on_enter ===
+{{{
+def on_enter(self, userdata):
+}}}
+
+This event is triggered when the state becomes active, i.e., a transition from another state to this one is taken.
+It is primarily used to start actions which are associated with this state or initialize variables which may have changed during a previous execution.
+This is the by far most often used event.
+
+=== on_exit ===
+{{{
+def on_exit(self, userdata):
+}}}
+
+This event is triggered when an outcome is returned and another state gets active.
+It can be used to stop possibly running processes started by on_enter.
+
+=== on_stop ===
+{{{
+def on_stop(self):
+}}}
+
+This event is triggered whenever the behavior stops execution, also if it is cancelled.
+Use this event to clean up things which are claimed or running even if the state is not active.
+If you use proxies for subscribing etc., you do not need to unsubscribe.
+
+=== on_pause ===
+{{{
+def on_pause(self):
+}}}
+
+This event is triggered when the operator clicks on the ''Pause'' button in the user interface or execution is paused automatically, e.g., because of a priority container becoming active and interrupting this state.
+It is recommended to implement this event such that all actions commanded by this state do not affect the robot while being paused.
+Note that the ''execute'' loop is not being called while the state is paused, so you don't need to stop this part explicitly.
+One option is to implement this event similar to ''on_exit''.
+
+=== on_resume ===
+{{{
+def on_resume(self, userdata):
+}}}
+
+Complement to ''on_pause'', i.e., this event is triggered when execution resumes after having been paused.
+Make sure that everything explicitly stopped in ''on_pause'' is continued.
+One option is to implement this event similar to ''on_enter''.
+
+
+## AUTOGENERATED DO NOT DELETE
+## TutorialCategory
+## FILL IN THE STACK TUTORIAL CATEGORY HERE

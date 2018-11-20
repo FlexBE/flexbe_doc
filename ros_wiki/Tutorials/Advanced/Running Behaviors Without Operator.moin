@@ -1,0 +1,100 @@
+## For instruction on writing tutorials
+## http://www.ros.org/wiki/WritingTutorials
+####################################
+##FILL ME IN
+####################################
+## for a custom note with links:
+## note =This tutorial assumes you have completed all of the [[flexbe/Tutorials|basic tutorials]] for FlexBE.
+## for the canned note of "This tutorial assumes that you have completed the previous tutorials:" just add the links
+## note.0=
+## descriptive title for the tutorial
+## title =Running Behaviors Without Operator
+## multi-line description to be displayed in search
+## description =Sometimes it is required to run behaviors without a user interface or they should be embedded in another high-level framework. Two ways of achieving this are presented.
+## the next tutorial description (optional)
+## next =
+## links to next tutorial (optional)
+## next.0.link=
+## next.1.link=
+## what level user is this tutorial for
+## level= IntermediateCategory
+## keywords =
+####################################
+<<IncludeCSTemplate(TutorialCSHeaderTemplate)>>
+
+<<TableOfContents(4)>>
+
+== Overview ==
+
+There are several scenarios where you might want to run a FlexBE behavior in autonomous mode without operator interaction.
+For example, if you want to use FlexBE's editor for creating behaviors, but use them to control a fully autonomous robot.
+Or if you have another high-level control in which you want to embed behaviors created with FlexBE.
+This tutorial presents you two different ways, depending on how you want to integrate behavior execution in your system.
+
+Note that running a behavior in autonomous mode means that all operator interaction features (like Autonomy Level, quite obviously) are disabled and the only available command is to force the running behavior to stop. This can be done by sending a message of type [[http://docs.ros.org/api/std_msgs/html/msg/Empty.html|std_msgs/Empty]] to the topic ''/flexbe/commands/preempt''.
+
+== Running a Behavior ==
+
+In the following, the two different ways of behavior execution are presented.
+We consider the case that we want to start the behavior which has the name "Example Behavior".
+
+=== Command Line / Launch File ===
+
+This way is best if you have a global behavior which you want to start once the whole system gets started and keep running all the time.
+This is typically the case when having a fully autonomous robot with FlexBE as the top-level control instance.
+
+Launch the onboard behavior engine on the robot as usual:
+{{{
+roslaunch flexbe_onboard behavior_onboard.launch
+}}}
+
+On any computer connected to the ROS master, run the following command to start execution of the behavior named "Example Behavior":
+{{{
+rosrun flexbe_widget be_launcher -b 'Example Behavior'
+}}}
+This will command the behavior engine to execute the specified behavior.
+In the case you run this from a different computer than the onboard computer and have local changes, these changes will be applied.
+
+In order to include this in a launch file, add the following to the respective launch file:
+{{{
+<arg name="behavior_name" default="Example Behavior" />
+<node name="behavior_launcher" pkg="flexbe_widget" type="be_launcher" output="screen" args="-b '$(arg behavior_name)'" />
+}}}
+
+=== Behavior Action ===
+
+Alternatively, you can command behavior execution via action call.
+This way might be best if you want to embed FlexBE behaviors in a different top-level control instance.
+
+Launch the onboard behavior engine on the robot as usual:
+{{{
+roslaunch flexbe_onboard behavior_onboard.launch
+}}}
+
+Also, run the FlexBE action server:
+{{{
+rosrun flexbe_widget be_action_server
+}}}
+
+This action server will listen on the action topic ''/flexbe/execute_behavior'' of type [[https://github.com/team-vigir/flexbe_behavior_engine/blob/master/flexbe_msgs/action/BehaviorExecution.action|flexbe_msgs/BehaviorExecution]]. For example, you can test executing a behavior from the command line by running the following minimal example:
+{{{
+rostopic pub /flexbe/execute_behavior/goal flexbe_msgs/BehaviorExecutionActionGoal '{goal: {behavior_name: "Example Behavior"}}'
+}}}
+
+== Attaching the User Interface ==
+
+Although executing in autonomous mode, it might be desired sometimes to attach to a running behavior in order to monitor it, send commands, or make runtime modifications.
+Considering that the "Example Behavior" is already running in the background, launch the user interface as usual:
+{{{
+roslaunch flexbe_widget behavior_ocs.launch
+}}}
+
+When the GUI comes up, it should already notify you that there is a behavior running.
+Make sure to load the running behavior, "Example Behavior" in this case, first.
+Otherwise, attaching will complain and give you the name of the required behavior to be loaded.
+Afterwards, switch to the ''Runtime Control'' view of the GUI and click the "Attach" button now being displayed in the main panel (instead of the option to start behavior execution).
+This will attach the GUI to monitor the current execution and will switch the execution mode from autonomous to supervised, i.e., the default mode when starting behaviors from the GUI.
+
+## AUTOGENERATED DO NOT DELETE
+## TutorialCategory
+## FILL IN THE STACK TUTORIAL CATEGORY HERE

@@ -1,0 +1,59 @@
+## For instruction on writing tutorials
+## http://www.ros.org/wiki/WritingTutorials
+####################################
+##FILL ME IN
+####################################
+## for a custom note with links:
+## note =This tutorial assumes you have completed all of the [[flexbe/Tutorials|basic tutorials]] for FlexBE.
+## for the canned note of "This tutorial assumes that you have completed the previous tutorials:" just add the links
+## note.0=
+## descriptive title for the tutorial
+## title =Parallel State Execution
+## multi-line description to be displayed in search
+## description =A sequential execution of states may not always be sufficient. This tutorial presents how to realize concurrency.
+## the next tutorial description (optional)
+## next =
+## links to next tutorial (optional)
+## next.0.link=
+## next.1.link=
+## what level user is this tutorial for
+## level= IntermediateCategory
+## keywords =
+####################################
+<<IncludeCSTemplate(TutorialCSHeaderTemplate)>>
+
+<<TableOfContents(4)>>
+
+== Introduction ==
+
+State machines are a great container type for states which should be executed sequentially and where the decision of which state becomes active next depends on the result of previous states. However, you might encounter situations where you would like to execute multiple states in parallel. For this reason, there is the ''concurrency'' container.
+
+Note that parallel execution quickly introduces latent complexity and additional points for failure as the single components might influence each other. Also, the requirement for parallel execution sometimes is an indicator that the functionality is rather a lower level capability and may make more sense as a system capability wrapped by a state rather than being implemented as a specialized high-level behavior. However, this might also be desired in some cases and it is more efficient to make use of existing states in a concurrent behavior.
+
+== Definition ==
+
+Adding a concurrency container to a behavior works similar as adding a state machine. In the Statemachine Editor, click "Add Container" in order to add a new container, which is a state machine per default. Afterwards, in the properties of the newly added container, set its type to ''Concurrency''. You can change the type of a container at any time without deleting its content. However, since the transition semantics of the two containers are different, transitions will be removed.
+
+{{http://philserver.bplaced.net/fbe/img/tutorials/fbetut01.png}}
+
+Next, open the container in order to edit its content. You might notice that the outcomes of this container type look different from the ones of a state machine. In a state machine, only one state at a time can be active. If this active state causes a transition to one of the state machine's outcomes, this outcome will be returned by the state machine. In contrast, in a concurrency container, all states are active at the same time. For this reason, a container outcome is only returned if all transitions pointing to this outcome are executed, i.e., all required state outcomes are returned. In addition, the same container outcome can be present multiple times, providing a way to express disjunction.
+
+{{http://philserver.bplaced.net/fbe/img/tutorials/fbetut02.png}}
+
+In the above example, the outcome ''finished'' will only be returned if both states finish successfully. If anything fails, each of the states can trigger the ''failed'' outcome on its own and thus, preempt the other state. This means the other state will immediately stop its execution as well regardless of its own status and the ''failed'' outcome is returned by the container. Note that the given example only is a toy example and in practice, it would make more sense to just get the data after the goal has been reached as the proxy subscriber stores the message anyway.
+
+In a concurrency container, all states are active in parallel and their execution starts immediately when the container becomes actives. As a consequence, transitions can only point to container outcomes, but not to other states in the same container. Nevertheless, there is always one ''main'' state in a concurrency container, indicated by the same notation as the initial state of a state machine, which works as described in the next section. In general, any of the states can be set to the main state.
+
+Similar to state machines, also concurrency containers are hierarchical. Thus, any type of container or embedded behavior can be contained as well.
+
+== Execution ==
+
+Typically, concurrency containers are used when some states for monitoring certain aspects of the system should run in parallel to the main execution path of a behavior. For example, a robot should perform a sequence of actions, but in parallel, monitor certain sensor values or have a timeout. In this context, the state machine containing the sequence of actions would make most sense as the main state.
+
+During execution, the main state of a concurrency container is monitored in the GUI as known from state machines. If this state is a state machine itself, outcomes of inner states can be forced or blocked by the selected autonomy level as usual.
+
+All other states not being the main state are running in the background. Their state of execution is not monitored, even if they are state machines. Consequently, they have no knowledge about the autonomy level and cannot be controlled manually. This might change in the future, but for now, this is how it works.
+
+## AUTOGENERATED DO NOT DELETE
+## TutorialCategory
+## FILL IN THE STACK TUTORIAL CATEGORY HERE
