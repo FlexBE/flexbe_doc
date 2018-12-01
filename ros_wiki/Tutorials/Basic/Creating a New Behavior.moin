@@ -24,10 +24,10 @@
 
 In this tutorial, and in the next one, we will create a very simple demo behavior to demonstrate the steps required for behavior creation.
 
-Launch the ''FlexBE Chrome App'' and start with giving your new behavior a name, describe it, and enter your own name as author. You can launch ''FlexBE Chrome App'' by using roslaunch
+Launch the ''FlexBE App'' and start with giving your new behavior a name, describe it, and enter your own name as author. You can launch the ''FlexBE App'' by using roslaunch
 
 {{{
-$  roslaunch flexbe_widget behavior_ocs.launch
+$  roslaunch flexbe_app flexbe_ocs.launch
 }}}
 
 {{http://philserver.bplaced.net/fbe/img/tutorials/fbetut11.png}}

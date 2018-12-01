@@ -22,10 +22,10 @@
 ####################################
 <<IncludeCSTemplate(TutorialCSHeaderTemplate)>>
 
-You should have completed the first two tutorials or at least have access to the created behavior. Now we want to execute a behavior. This means, it is no longer sufficient to just launch the ''FlexBE Chrome App''. Instead, we need to launch the whole behavior engine. This can be done by executing the following command:
+You should have completed the first two tutorials or at least have access to the created behavior. Now we want to execute a behavior. This means, it is no longer sufficient to just launch the ''FlexBE App''. Instead, we need to launch the whole behavior engine. This can be done by executing the following command:
 
 {{{
-roslaunch flexbe_onboard behavior_testing.launch
+roslaunch flexbe_app flexbe_full.launch
 }}}
 
 First, you have to load the previously created behavior. This is done by clicking on the ''Load Behavior'' button at the top and then selecting your '''Hello World Demo''' in the list of available behaviors. Similar to choosing a class when adding a new state, you can again start typing parts of the name into the filter text field to quickly find what you are looking for.

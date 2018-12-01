@@ -67,8 +67,7 @@ Your state machine should now look similar to the one shown below.
 The green color of the second transition refers to its required autonomy level.
 
 Now save the behavior. This will generate all files required for executing the new behavior.
-
-Since you added a new ROS package by creating a new behavior, ''catkin'' needs to configure this new package. In order to do so, close the ''Chrome App'' after saving and run '''catkin_make'''. This step is only required when adding a new behavior. Changes to a behavior do not require this process.
+After saving, you can close the ''FlexBE App''.
 
 That's it! You are ready for your first [[http://wiki.ros.org/flexbe/Tutorials/Execution%20of%20a%20Behavior|execution of a behavior]].
 
