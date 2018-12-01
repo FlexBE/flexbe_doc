@@ -4,9 +4,32 @@ Since FlexBE is very versatile and offers a lot of options depending on what you
 
 == Basic Tutorials ==
 
+Get started with FlexBE.
+
 <<TutorialChain(flexbe/Tutorials/System Configuration)>>
 
+== Third-Party Tutorials ==
+
+The following tutorials have been created by third parties to introduce FlexBE.
+Please consider these resources as well in order to get started.
+
+TheConstruct published three consecutive FlexBE sessions in their "ROS Developers LIVE-Class" series:
+
+[[https://www.youtube.com/watch?v=fYF4ijxZViI|ROS Developers LIVE-Class #26: Robot Behavior Design using the FlexBe Engine]]
+
+[[https://www.youtube.com/watch?v=TLur9ng0LcU|ROS Developers LIVE-Class #27: Robot Behavior Design using the FlexBe Engine Round 2]]
+
+[[https://www.youtube.com/watch?v=-c9a59AhHtE|ROS Developers LIVE-Class #28: Robot Behavior Design using the FlexBe Engine Round 3]]
+
+TU Delft released a introductory course to ROS on edX as part of the ROSIN project.
+Week 6 provides a detailed introduction into behavior design with FlexBE on a nicely prepared factory simulation demo.
+
+[[https://www.edx.org/course/hello-real-world-with-ros-robot-operating-system|Hello (Real) World with ROS – Robot Operating System]]
+
+
 == Advanced Tutorials ==
+
+Learn more about specific features of FlexBE after completing the basic tutorials.
 
 <<TutorialChain(flexbe/Tutorials/Developing Actionlib States)>>
 
