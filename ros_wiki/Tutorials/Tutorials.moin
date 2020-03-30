@@ -51,4 +51,6 @@ Learn more about specific features of FlexBE after completing the basic tutorial
 
 <<TutorialChain(flexbe/Tutorials/Behavior Synthesis Interface)>>
 
+<<TutorialChain(flexbe/Tutorials/Logging Behavior Execution)>>
+
 '''Create a new tutorial:''' <<NewPage(TutorialTemplate,Enter tutorial name,flexbe/Tutorials,%s)>> 

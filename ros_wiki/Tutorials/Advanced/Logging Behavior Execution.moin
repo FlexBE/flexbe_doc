@@ -1,0 +1,250 @@
+## For instruction on writing tutorials
+## http://www.ros.org/wiki/WritingTutorials
+####################################
+##FILL ME IN
+####################################
+## for a custom note with links:
+## note =This tutorial assumes you have completed all of the [[flexbe/Tutorials|basic tutorials]] for FlexBE.
+## for the canned note of "This tutorial assumes that you have completed the previous tutorials:" just add the links 
+## note.0= 
+## descriptive title for the tutorial
+## title =Logging Behavior Execution
+## multi-line description to be displayed in search 
+## description =FlexBE offers to log many details during execution of states and behaviors. This tutorial provides an overview and shows configuration options.
+## the next tutorial description (optional)
+## next =
+## links to next tutorial (optional)
+## next.0.link=
+## next.1.link=
+## what level user is this tutorial for 
+## level= IntermediateCategory
+## keywords =
+####################################
+<<IncludeCSTemplate(TutorialCSHeaderTemplate)>>
+
+<<TableOfContents(4)>>
+
+== Overview ==
+
+In general, FlexBE offers two different loggers that can be fed with information.
+The first one is a simple logger that is mostly intended as a wrapper for the {{{rospy}}} logging functions.
+For example, the code
+{{{#!python
+from flexbe_core import Logger
+Logger.loginfo("Hello world!")  # not covered here
+}}}
+prints ''Hello world!'' not only to the terminal, but also to the Behavior Feedback display of the FlexBE App.
+This tutorial is about the second type of logger.
+
+The second type of logger, and the subject of this tutorial, is the so-called ''State Logger''.
+The State Logger is mainly intended to perform a logging, e.g. to a file, in the background while a behavior is running.
+After execution, the stored log file can be used to obtain various detailed information about the behavior and to evaluate different aspects.
+
+
+== Default Behavior ==
+
+The State Logger is integrated in the base class of states and most of its features can be used without modifying any code.
+To get started and to use the default logging behavior, simply enable it as an argument to the launch file of the onboard behavior engine
+{{{
+roslaunch flexbe_onboard behavior_onboard.launch log_enabled:=True
+}}}
+
+When enabled, each behavior execution will create a new log file in the logging folder (default: {{{~/.flexbe_logs}}}).
+The log file is in yaml format to provide an easy way for parsing and processing it.
+In particular, the content is a list of entries where each entry is a log event of any of the active loggers.
+Each log event is given by a dictionary and always contains the following keys:
+
+ * {{{logger}}}: The type of logger, one of the values in the first column below.
+ * {{{time}}}: The ROS time when this entry was logged.
+ * {{{name}}}: Name of the state that logged the entry.
+ * {{{path}}}: Complete path of the state, e.g., {{{/Some_container/State_name}}}.
+ * {{{state}}}: State class that logged the entry.
+
+The following loggers are active by default and each of them adds further keys to the logged dictionary:
+|| '''Logger''' || '''Level''' || '''Description''' ||
+|| '''flexbe.initialize''' || {{{INFO}}} || Special log that appears once as the first entry. Contains meta-information like the behavior name or time of execution. Keys: {{{behavior}}}, {{{autonomy}}}. ||
+|| '''flexbe.outcomes''' || {{{INFO}}} || Log of the outcome returned by a state. Keys: {{{outcome}}}. ||
+|| '''flexbe.events''' || {{{INFO}}} || Log of an executed event like {{{on_enter}}} or {{{on_pause}}}. Keys: {{{event}}}, {{{duration}}}. ||
+|| '''flexbe.operator''' || {{{INFO}}} || Log of operator interaction, i.e., requesting or forcing an outcome. Keys: {{{type}}} and either {{{request}}}, {{{autonomy}}}, {{{required}}} or {{{forced}}}, {{{requested}}} ||
+|| '''flexbe.userdata''' || {{{DEBUG}}} || Log of serialized userdata that is given as input to states. Serialization is done by yaml. Keys: {{{userdata}}} with one sub-key for each userdata key. ||
+
+The default logging already serves many common use-cases for tracking the execution and analyzing the performance of some states.
+In the case that it is not sufficient, configuration possibilities are presented further below.
+
+
+== Parsing of Logs ==
+
+For evaluation of basic properties, an evaluation script is provided by FlexBE.
+However, also consider to implement an own parser for more detailed and user-specific evaluation as well as integration into other tools.
+For this purpose, the provided script can serve as a starting point.
+
+First, the use of the provided evaluation script is briefly summarized.
+It can be used as follows.
+{{{
+rosrun flexbe_widget evaluate_logs my_log.yaml state_name time visits
+}}}
+In this example, the following arguments are used:
+ * {{{my_log.yaml}}}: This would be the path to the log file that should be evaluated.
+ * {{{state_name}}}: The first argument is the evaluation key that defines the criterion for grouping the different log entries. In this case, we want to differentiate between different state names.
+ * {{{time visits}}}: All following arguments are values to be determined for each key. While all values are provided, the first value defines the order in which the output is sorted. Here, we say we want to see for each state name the time it has been executed and how often it became active, while sorting based on execution time.
+
+As a result of the above call, the script will print a table to the terminal that lists the specified values.
+
+To see more details including an overview of possible keys and values, run:
+{{{
+rosrun flexbe_widget evaluate_logs -h
+}}}
+
+In order to implement an own evaluation script, the following structure can be useful to iterate over log entries and is also used by the above script:
+
+{{{#!python
+import yaml
+
+with open(logfile) as f:
+    logs = yaml.load(f)
+
+for log in logs:
+    if log['logger'] == 'flexbe.outcomes':
+        # process outcome log entry
+    elif log['logger'] == 'flexbe.events' and log['event'] == 'enter':
+        # process on_enter log entry
+    # ...
+}}}
+
+
+== Configuration ==
+
+Beyond the default behavior, the State Logger offers a quite flexible way for configuration and customization.
+This includes both the way how log entries are handled as well as which sort of information is logged.
+
+=== Changing the Logger Behavior ===
+
+The {{{behavior_onboard.launch}}} file in {{{flexbe_onboard}}} offers four arguments to customize the logging behavior on a high level (given are the default values):
+ * {{{log_enabled:=False}}} can be used to active the logging as shown above.
+ * {{{log_folder:=~/.flexbe_logs}}} defines where new log files are created.
+ * {{{log_level:=INFO}}} defines the log level, see table above for required levels of the different loggers
+ * {{{log_serialize:=yaml}}} defines the serialization format of userdata. While {{{yaml}}} is strongly recommended, also {{{str}}}, {{{repr}}}, and {{{pickle}}} are supported.
+
+In addition to these launch file arguments, the ROS parameter server can be used for a more advanced configuration.
+By default, the following configuration is considered and then updated with additional or different entries obtained from the ROS parameter namespace {{{/flexbe/log_config}}}:
+{{{#!yaml
+version: 1
+disable_existing_loggers: False
+formatters: 
+  yaml:
+    (): flexbe_core.state_logger.YamlFormatter
+handlers:
+  file:
+    class: logging.FileHandler
+    filename: %(log_folder)s/%(behavior)s_%(timestamp)s.yaml
+    formatter: yaml
+  publish:
+    class: flexbe_core.state_logger.PublishBehaviorLogMessage
+    topic: flexbe/state_logger
+    formatter: yaml
+loggers:
+  flexbe: 
+    level: INFO
+    handlers: [file]
+}}}
+
+The format is given by the standard [[https://docs.python.org/2/library/logging.config.html#dictionary-schema-details|Python logging module]] so you might want to check there for further information about the individual entries.
+Essentially, the above config defines one formatter, the {{{YamlFormatter}}} that is used to generate logs in yaml format, and two handlers, one that creates a file and one that publishes messages instead.
+
+By default, only the file handler is active for all standard FlexBE loggers as defined in the {{{loggers}}} section. As a little exercise in logger configurations, let's exchange this behavior and instead, publish messages.
+To do so, set the corresponding parameter as:
+{{{
+rosparam set /flexbe/log_config/loggers/flexbe/handlers [publish]
+}}}
+Now, the next behavior execution will not create a log file anymore, but instead publish all logged entries to the topic {{{/flexbe/state_logger}}}.
+
+Depending on your needs, you can define additional formatters and handlers or change the behavior of each logger, including custom loggers, individually by adjusting the config.
+
+=== Adding Custom Logs ===
+
+Changing the configuration only adjusts the behavior of already implemented loggers.
+In order to add custom logs, the State Logger provides an API that can be used in state implementations.
+
+The following examples illustrate the different uses cases to do so.
+
+==== Log a specific userdata key ====
+
+{{{#!python
+from flexbe_core import EventState, StateLogger
+
+@StateLogger.log_userdata('my_logger', keys=['specific_key'])
+class MyState(EventState):
+
+    def __init__(self):
+        super(MyState, self).__init__(outcomes=['done'], input_keys=['specific_key', 'other_key'])
+}}}
+
+In this example, we consider that the state {{{MyState}}} has an input key called {{{specific_key}}} that is of special interest here and should be logged explicitly.
+As declared by the class decorator in the code snippet, the custom logger {{{my_logger}}} is used to perform the logging of the specified key.
+If no key would be defined, all keys would be logged.
+
+Using a custom logger has the advantage that the logging behavior can be configured separately from the standard {{{flexbe.userdata}}} logger.
+For example, the log level of {{{my_logger}}} can be set to ''DEBUG'' by default or this logger can be used to publish the userdata log while the {{{flexbe.userdata}}} logger still logs to a file.
+
+==== Log a custom state event ====
+
+{{{#!python
+from flexbe_core import EventState, StateLogger
+from flexbe_core.proxy import ProxySubscriberCached
+from std_msgs.msg import String
+
+@StateLogger.log_event('my_logger', received='_process_message')
+class MyState(EventState):
+
+    def __init__(self):
+        super(MyState, self).__init__(outcomes=['done'])
+        self._topic = '/some_topic'
+        self._sub = ProxySubscriberCached({self._topic: String})
+
+    def execute(self, userdata):
+        if self._sub.has_msg(self._topic):
+            self._process_message(self._sub.get_last_msg(self._topic))
+            return 'done'
+
+    def _process_message(self, message):
+        pass
+}}}
+
+In this example, we consider a state that has a subscriber and during execution, should wait for a message, process it, and then continue.
+In this context, receiving the message is an event that might make sense to log explicitly, similarly to how ''on_enter'' or ''on_pause'' events would be logged.
+
+This is achieved here by putting the code to process a message in a separate method called {{{_process_message}}} in this example.
+Then, similar to before when logging the userdata, we add a state decorator to the state class.
+This time, we use the {{{log_event}}} decorator, which accepts arbitrary keyword arguments such that the keyword is considered as logged event and its value is the method which corresponds to the event.
+In other words, as defined above, the logger will log the event ''received'' whenever the method {{{_process_message}}} is being called.
+By the way, logging an event will also include logging its execution time.
+
+==== Log arbitrary custom information ====
+
+{{{#!python
+import logging
+from flexbe_core import EventState, StateLogger
+
+class MyState(EventState):
+
+    def __init__(self):
+        super(MyState, self).__init__(outcomes=['done'])
+
+    def execute(self, userdata):
+        StateLogger.log('my_logger', self, text='Hello world!', loglevel=logging.INFO)
+        return 'done'
+}}}
+
+In this example, the State Logger is used to log a custom entry.
+Instead of a decorator, a method call is used at the location in the code where the entry should be logged.
+The {{{StateLogger.log}}} method expects the following arguments:
+ * (required) Name of the logger to log the entry.
+ * (required) Instance of the state that logs the entry. This is used to automatically log the standard entries such as state class or name.
+ * (optional) Arbitrary keyword arguments that are logged as keys in the log entry.
+ * (optional) The {{{loglevel}}} keyword can be set to specify a log level. The {{{logging.INFO}}} value specified here would also be the default if not set.
+Resulting from the above method call, each call would create a new log entry with the standard keys and, in addition, the key {{{text}}} set to ''Hello World!''.
+
+
+## AUTOGENERATED DO NOT DELETE 
+## TutorialCategory
+## FILL IN THE STACK TUTORIAL CATEGORY HERE
